@@ -393,6 +393,7 @@ function AdminDashboard() {
         if (item.name === "Irani Chai") chaiCount += item.qty;
         if (item.name === "Bun") bunCount += item.qty;
       });
+      // ticketTotal prioritizes stored total field, prices only used as fallback for old tickets
       revenue += ticketTotal(
         ticket,
         Number(chaiPrice) || 0,
@@ -400,7 +401,8 @@ function AdminDashboard() {
       );
     });
     return { chaiCount, bunCount, revenue };
-  }, [readyTickets, chaiPrice, bunPrice]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyTickets]); // Prices removed from deps - revenue uses stored totals, not current prices
 
   return (
     <main className="min-h-screen bg-muted/40 py-10">
@@ -530,8 +532,8 @@ function AdminDashboard() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-3">
-                  <SummaryCard label="Ready chai" value={readySummary.chaiCount} />
-                  <SummaryCard label="Ready buns" value={readySummary.bunCount} />
+                  <SummaryCard label="Served chai" value={readySummary.chaiCount} />
+                  <SummaryCard label="Served buns" value={readySummary.bunCount} />
                   <SummaryCard
                     label="Revenue"
                     value={currency.format(readySummary.revenue || 0)}

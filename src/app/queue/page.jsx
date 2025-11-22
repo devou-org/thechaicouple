@@ -22,8 +22,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
 const MENU = [
-  { key: "chai", label: "Irani Chai" },
+  { key: "chai", label: "Special Chai" },
   { key: "bun", label: "Bun" },
+  { key: "tiramisu", label: "Tiramisu" },
 ];
 
 const currency = new Intl.NumberFormat("en-IN", {
@@ -35,8 +36,8 @@ const currency = new Intl.NumberFormat("en-IN", {
 export default function QueuePage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [quantities, setQuantities] = useState({ chai: 0, bun: 0 });
-  const [pricing, setPricing] = useState({ chaiPrice: 0, bunPrice: 0 });
+  const [quantities, setQuantities] = useState({ chai: 0, bun: 0, tiramisu: 0 });
+  const [pricing, setPricing] = useState({ chaiPrice: 0, bunPrice: 0, tiramisuPrice: 0 });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [settings, setSettings] = useState(null);
@@ -75,6 +76,7 @@ export default function QueuePage() {
         const next = {
           chaiPrice: Number(data.chaiPrice) || 0,
           bunPrice: Number(data.bunPrice) || 0,
+          tiramisuPrice: Number(data.tiramisuPrice) || 0,
         };
         if (!ignore) {
           setPricing(next);
@@ -106,10 +108,11 @@ export default function QueuePage() {
           
           // Auto-adjust quantities if inventory drops below selected quantities
           setQuantities((prev) => {
-            const newInventory = payload.settings.inventory || { chai: 0, bun: 0 };
+            const newInventory = payload.settings.inventory || { chai: 0, bun: 0, tiramisu: 0 };
             return {
               chai: Math.min(prev.chai || 0, newInventory.chai || 0),
               bun: Math.min(prev.bun || 0, newInventory.bun || 0),
+              tiramisu: Math.min(prev.tiramisu || 0, newInventory.tiramisu || 0),
             };
           });
         }
@@ -135,7 +138,7 @@ export default function QueuePage() {
         name: item.label,
         key: item.key,
         qty: quantities[item.key] || 0,
-        price: item.key === "chai" ? pricing.chaiPrice : pricing.bunPrice,
+        price: item.key === "chai" ? pricing.chaiPrice : item.key === "bun" ? pricing.bunPrice : pricing.tiramisuPrice,
       })).filter((item) => item.qty > 0),
     [quantities, pricing]
   );
@@ -164,27 +167,22 @@ export default function QueuePage() {
   }, [settings]);
 
   // Calculate availability from inventory (inventory > 0 means available)
-  const inventory = settings?.inventory || { chai: 0, bun: 0 };
-  const buffer = settings?.buffer || { chai: 10, bun: 10 };
+  const inventory = settings?.inventory || { chai: 0, bun: 0, tiramisu: 0 };
+  const buffer = settings?.buffer || { chai: 10, bun: 10, tiramisu: 10 };
   const availability = {
     chai: (inventory.chai || 0) > 0,
     bun: (inventory.bun || 0) > 0,
+    tiramisu: (inventory.tiramisu || 0) > 0,
   };
-  const hasAnyAvailable = availability.chai || availability.bun;
+  const hasAnyAvailable = availability.chai || availability.bun || availability.tiramisu;
   const queueOpen = isWithinServiceWindow && hasAnyAvailable;
-  
-  // Check if inventory is below buffer (warning state)
-  const chaiLowStock = (inventory.chai || 0) > 0 && (inventory.chai || 0) < (buffer.chai || 10);
-  const bunLowStock = (inventory.bun || 0) > 0 && (inventory.bun || 0) < (buffer.bun || 10);
-  const chaiOutOfStock = (inventory.chai || 0) <= 0;
-  const bunOutOfStock = (inventory.bun || 0) <= 0;
 
   const canSubmit =
     queueOpen && name.trim().length > 0 && orderItems.length > 0 && !submitting;
 
   function updateQuantity(key, delta) {
     const available =
-      settings?.availability?.[key === "chai" ? "chai" : "bun"] ?? true;
+      settings?.availability?.[key] ?? availability[key] ?? true;
     setQuantities((prev) => {
       if (delta > 0 && !available) {
         return prev;
@@ -287,14 +285,14 @@ export default function QueuePage() {
               <div className="space-y-3">
                 {MENU.map((item) => {
                   const price =
-                    item.key === "chai" ? pricing.chaiPrice : pricing.bunPrice;
+                    item.key === "chai" ? pricing.chaiPrice : item.key === "bun" ? pricing.bunPrice : pricing.tiramisuPrice;
                   const qty = quantities[item.key] || 0;
-                  const available = availability[item.key === "chai" ? "chai" : "bun"];
-                  const isChai = item.key === "chai";
-                  const itemInventory = isChai ? inventory.chai : inventory.bun;
-                  const itemBuffer = isChai ? buffer.chai : buffer.bun;
-                  const isLowStock = itemInventory > 0 && itemInventory < itemBuffer;
-                  const isOutOfStock = itemInventory <= 0;
+                  const available = availability[item.key] ?? false;
+                  const itemInventory = inventory[item.key] || 0;
+                  const itemBuffer = buffer[item.key] || 10;
+                  // Only show badges when settings are loaded
+                  const isLowStock = !settingsLoading && itemInventory > 0 && itemInventory < itemBuffer;
+                  const isOutOfStock = !settingsLoading && itemInventory <= 0;
                   
                   return (
                     <div
@@ -302,7 +300,7 @@ export default function QueuePage() {
                       className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3"
                     >
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{item.label}</p>
                           {isOutOfStock && (
                             <Badge variant="destructive" className="text-xs">
@@ -318,14 +316,6 @@ export default function QueuePage() {
                         <p className="text-sm text-muted-foreground">
                           {price ? currency.format(price) : "Pricing pending"}
                         </p>
-                        {!available && (
-                          <Badge
-                            variant="outline"
-                            className="mt-2 border-amber-200 text-amber-700"
-                          >
-                            Sold out today
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-3">
                         <Button
@@ -402,17 +392,11 @@ export default function QueuePage() {
               </Button>
             </form>
 
-            <p className="text-center text-xs text-muted-foreground">
-              Today&apos;s queue resets automatically at midnight. Keep this tab open to follow your position.
-            </p>
+           
           </CardContent>
           <CardFooter className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
             <span>Need help? Ask a staff member to rescan the QR.</span>
-            <Badge variant="outline">
-              {settings
-                ? `Service hours ${settings.serviceStart || "--"} – ${settings.serviceEnd || "--"}`
-                : "Loading service hours"}
-            </Badge>
+           
           </CardFooter>
         </Card>
         {settingsError && (

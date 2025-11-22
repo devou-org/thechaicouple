@@ -48,7 +48,7 @@ export default function Home() {
         <div className="grid gap-6 md:grid-cols-2">
           <Card className="text-left">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-2xl font-semibold">Irani Chai</CardTitle>
+              <CardTitle className="text-2xl font-semibold">Special Chai</CardTitle>
               <Coffee className="h-8 w-8 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-3">

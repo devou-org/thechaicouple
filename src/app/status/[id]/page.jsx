@@ -33,7 +33,7 @@ export default function StatusPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pricing, setPricing] = useState({ chaiPrice: 0, bunPrice: 0 });
+  const [pricing, setPricing] = useState({ chaiPrice: 0, bunPrice: 0, tiramisuPrice: 0 });
   const [streamSettings, setStreamSettings] = useState(null);
   const [ticketNotFound, setTicketNotFound] = useState(false);
 
@@ -125,6 +125,7 @@ export default function StatusPage() {
         const next = {
           chaiPrice: Number(data.chaiPrice) || 0,
           bunPrice: Number(data.bunPrice) || 0,
+          tiramisuPrice: Number(data.tiramisuPrice) || 0,
         };
         if (!ignore) {
           setPricing(next);
@@ -142,11 +143,16 @@ export default function StatusPage() {
 
   const orderSummary = useMemo(() => {
     if (!data?.items) return [];
-    return data.items
+        return data.items
       .filter((item) => item.qty > 0)
       .map((item) => {
-        const price =
-          item.name === "Irani Chai" ? pricing.chaiPrice : pricing.bunPrice;
+        let price = pricing.bunPrice;
+        // Handle both "Special Chai" and legacy "Irani Chai"
+        if (item.name === "Special Chai" || item.name === "Irani Chai") {
+          price = pricing.chaiPrice;
+        } else if (item.name === "Tiramisu") {
+          price = pricing.tiramisuPrice;
+        }
         const subtotal = (price || 0) * item.qty;
         return { name: item.name, qty: item.qty, price, subtotal };
       });
@@ -184,7 +190,7 @@ export default function StatusPage() {
     const availability = streamSettings.availability;
     return data.items.some((item) => {
       if (item.qty <= 0) return false;
-      if (item.name === "Irani Chai" && !availability.chai) return true;
+      if ((item.name === "Special Chai" || item.name === "Irani Chai") && !availability.chai) return true;
       if (item.name === "Bun" && !availability.bun) return true;
       return false;
     });
@@ -297,7 +303,7 @@ export default function StatusPage() {
                         {orderSummary.map((item) => {
                           const isItemSoldOut =
                             streamSettings?.availability &&
-                            ((item.name === "Irani Chai" &&
+                            (((item.name === "Special Chai" || item.name === "Irani Chai") &&
                               !streamSettings.availability.chai) ||
                               (item.name === "Bun" &&
                                 !streamSettings.availability.bun));

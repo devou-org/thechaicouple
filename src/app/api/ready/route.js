@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, firestoreHelpers } from "@/lib/firebase";
+import { ITEM_NAMES, isChai, isBun, isTiramisu } from "@/lib/item-names";
 
 const { doc, collection, getDoc, setDoc, serverTimestamp } = firestoreHelpers;
 
@@ -39,13 +40,19 @@ export async function PATCH(request) {
     const pricingSnap = await getDoc(pricingRef);
     const pricingData = pricingSnap.exists()
       ? pricingSnap.data()
-      : { chaiPrice: 0, bunPrice: 0 };
+      : { chaiPrice: 0, bunPrice: 0, tiramisuPrice: 0 };
     const chaiPrice = Number(pricingData.chaiPrice) || 0;
     const bunPrice = Number(pricingData.bunPrice) || 0;
+    const tiramisuPrice = Number(pricingData.tiramisuPrice) || 0;
 
     const total = originalItems.reduce((sum, item) => {
       const qty = Number(item.qty) || 0;
-      const unitPrice = item.name === "Irani Chai" ? chaiPrice : bunPrice;
+      let unitPrice = bunPrice;
+      if (isChai(item.name)) {
+        unitPrice = chaiPrice;
+      } else if (isTiramisu(item.name)) {
+        unitPrice = tiramisuPrice;
+      }
       return sum + unitPrice * qty;
     }, 0);
 

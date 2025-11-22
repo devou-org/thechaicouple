@@ -140,21 +140,22 @@ function AdminDashboard() {
 
   const [chaiPrice, setChaiPrice] = useState("");
   const [bunPrice, setBunPrice] = useState("");
+  const [tiramisuPrice, setTiramisuPrice] = useState("");
   const [pricingError, setPricingError] = useState("");
   const [pricingSaving, setPricingSaving] = useState(false);
 
   const [serviceStart, setServiceStart] = useState("06:00");
   const [serviceEnd, setServiceEnd] = useState("23:00");
   const [closedMessage, setClosedMessage] = useState("");
-  const [inventory, setInventory] = useState({ chai: 0, bun: 0 });
-  const [buffer, setBuffer] = useState({ chai: 10, bun: 10 });
+  const [inventory, setInventory] = useState({ chai: 0, bun: 0, tiramisu: 0 });
+  const [buffer, setBuffer] = useState({ chai: 10, bun: 10, tiramisu: 10 });
   const [settingsError, setSettingsError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
 
   const [clearing, setClearing] = useState(false);
   const [paidUpdating, setPaidUpdating] = useState({});
   const [editingTicket, setEditingTicket] = useState(null);
-  const [editQuantities, setEditQuantities] = useState({ chai: 0, bun: 0 });
+  const [editQuantities, setEditQuantities] = useState({ chai: 0, bun: 0, tiramisu: 0 });
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [deletingTicket, setDeletingTicket] = useState(null);
@@ -222,10 +223,12 @@ function AdminDashboard() {
           setInventory({
             chai: payload.settings.inventory?.chai ?? 0,
             bun: payload.settings.inventory?.bun ?? 0,
+            tiramisu: payload.settings.inventory?.tiramisu ?? 0,
           });
           setBuffer({
             chai: payload.settings.buffer?.chai ?? 10,
             bun: payload.settings.buffer?.bun ?? 10,
+            tiramisu: payload.settings.buffer?.tiramisu ?? 10,
           });
           setServiceStart(payload.settings.serviceStart || "06:00");
           setServiceEnd(payload.settings.serviceEnd || "23:00");
@@ -262,6 +265,7 @@ function AdminDashboard() {
         }
         setChaiPrice(String(json.chaiPrice ?? ""));
         setBunPrice(String(json.bunPrice ?? ""));
+        setTiramisuPrice(String(json.tiramisuPrice ?? ""));
       } catch {
         setPricingError("Failed to load pricing");
       }
@@ -277,6 +281,7 @@ function AdminDashboard() {
         setInventory({
           chai: json.inventory?.chai ?? 0,
           bun: json.inventory?.bun ?? 0,
+          tiramisu: json.inventory?.tiramisu ?? 0,
         });
       }
     } catch {
@@ -299,10 +304,12 @@ function AdminDashboard() {
         setInventory({
           chai: json.inventory?.chai ?? 0,
           bun: json.inventory?.bun ?? 0,
+          tiramisu: json.inventory?.tiramisu ?? 0,
         });
         setBuffer({
           chai: json.buffer?.chai ?? 10,
           bun: json.buffer?.bun ?? 10,
+          tiramisu: json.buffer?.tiramisu ?? 10,
         });
       } catch {
         setSettingsError("Failed to load settings");
@@ -322,6 +329,7 @@ function AdminDashboard() {
           const newInventory = {
             chai: payload.settings.inventory?.chai ?? 0,
             bun: payload.settings.inventory?.bun ?? 0,
+            tiramisu: payload.settings.inventory?.tiramisu ?? 0,
           };
           
           // Update inventory and settings in real-time
@@ -329,6 +337,7 @@ function AdminDashboard() {
           setBuffer({
             chai: payload.settings.buffer?.chai ?? 10,
             bun: payload.settings.buffer?.bun ?? 10,
+            tiramisu: payload.settings.buffer?.tiramisu ?? 10,
           });
           setServiceStart(payload.settings.serviceStart || "06:00");
           setServiceEnd(payload.settings.serviceEnd || "23:00");
@@ -339,6 +348,7 @@ function AdminDashboard() {
             setEditQuantities((prev) => ({
               chai: Math.min(prev.chai || 0, newInventory.chai || 0),
               bun: Math.min(prev.bun || 0, newInventory.bun || 0),
+              tiramisu: Math.min(prev.tiramisu || 0, newInventory.tiramisu || 0),
             }));
           }
         }
@@ -373,11 +383,13 @@ function AdminDashboard() {
 
   function openEditDialog(ticket) {
     const items = Array.isArray(ticket.items) ? ticket.items : [];
-    const chaiItem = items.find((item) => item.name === "Irani Chai");
+    const chaiItem = items.find((item) => item.name === "Special Chai" || item.name === "Irani Chai");
     const bunItem = items.find((item) => item.name === "Bun");
+    const tiramisuItem = items.find((item) => item.name === "Tiramisu");
     setEditQuantities({
       chai: chaiItem ? Number(chaiItem.qty) || 0 : 0,
       bun: bunItem ? Number(bunItem.qty) || 0 : 0,
+      tiramisu: tiramisuItem ? Number(tiramisuItem.qty) || 0 : 0,
     });
     setEditingTicket(ticket);
     setEditError("");
@@ -400,10 +412,15 @@ function AdminDashboard() {
       // Build items array
       const items = [];
       if (editQuantities.chai > 0) {
-        items.push({ name: "Irani Chai", qty: editQuantities.chai });
+        // Use the current item name if it exists, otherwise use "Special Chai"
+        const existingChaiName = editingTicket.items?.find((item) => item.name === "Special Chai" || item.name === "Irani Chai")?.name || "Special Chai";
+        items.push({ name: existingChaiName, qty: editQuantities.chai });
       }
       if (editQuantities.bun > 0) {
         items.push({ name: "Bun", qty: editQuantities.bun });
+      }
+      if (editQuantities.tiramisu > 0) {
+        items.push({ name: "Tiramisu", qty: editQuantities.tiramisu });
       }
 
       if (items.length === 0) {
@@ -505,6 +522,7 @@ function AdminDashboard() {
         body: JSON.stringify({
           chaiPrice: Number(chaiPrice),
           bunPrice: Number(bunPrice),
+          tiramisuPrice: Number(tiramisuPrice),
         }),
       });
       const json = await res.json();
@@ -515,6 +533,7 @@ function AdminDashboard() {
       }
       setChaiPrice(String(json.chaiPrice ?? ""));
       setBunPrice(String(json.bunPrice ?? ""));
+      setTiramisuPrice(String(json.tiramisuPrice ?? ""));
       setPricingSaving(false);
     } catch {
       setPricingError("Failed to save pricing");
@@ -571,8 +590,8 @@ function AdminDashboard() {
         setSettingsSaving(false);
         return;
       }
-      setInventory(json.inventory || { chai: 0, bun: 0 });
-      setBuffer(json.buffer || { chai: 10, bun: 10 });
+      setInventory(json.inventory || { chai: 0, bun: 0, tiramisu: 0 });
+      setBuffer(json.buffer || { chai: 10, bun: 10, tiramisu: 10 });
       setSettingsSaving(false);
     } catch {
       setSettingsError("Failed to save inventory");
@@ -599,23 +618,26 @@ function AdminDashboard() {
   const readySummary = useMemo(() => {
     let chaiCount = 0;
     let bunCount = 0;
+    let tiramisuCount = 0;
     let revenue = 0;
     readyTickets.forEach((ticket) => {
       ticket.items?.forEach((item) => {
         if (!item.qty) return;
-        if (item.name === "Irani Chai") chaiCount += item.qty;
+        if (item.name === "Special Chai" || item.name === "Irani Chai") chaiCount += item.qty;
         if (item.name === "Bun") bunCount += item.qty;
+        if (item.name === "Tiramisu") tiramisuCount += item.qty;
       });
       // Only include paid tickets in revenue
       if (ticket.paid) {
         revenue += ticketTotal(
           ticket,
           Number(chaiPrice) || 0,
-          Number(bunPrice) || 0
+          Number(bunPrice) || 0,
+          Number(tiramisuPrice) || 0
         );
       }
     });
-    return { chaiCount, bunCount, revenue };
+    return { chaiCount, bunCount, tiramisuCount, revenue };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyTickets]);
 
@@ -664,14 +686,19 @@ function AdminDashboard() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Badge 
-                      variant={inventory.chai <= 0 ? "destructive" : inventory.chai < buffer.chai ? "default" : "secondary"}
+                      variant={(inventory.chai ?? 0) <= 0 ? "destructive" : (inventory.chai ?? 0) < (buffer.chai ?? 10) ? "default" : "secondary"}
                     >
-                      Chai: {inventory.chai}
+                      Chai: {inventory.chai ?? 0}
                     </Badge>
                     <Badge 
-                      variant={inventory.bun <= 0 ? "destructive" : inventory.bun < buffer.bun ? "default" : "secondary"}
+                      variant={(inventory.bun ?? 0) <= 0 ? "destructive" : (inventory.bun ?? 0) < (buffer.bun ?? 10) ? "default" : "secondary"}
                     >
-                      Bun: {inventory.bun}
+                      Bun: {inventory.bun ?? 0}
+                    </Badge>
+                    <Badge 
+                      variant={(inventory.tiramisu ?? 0) <= 0 ? "destructive" : (inventory.tiramisu ?? 0) < (buffer.tiramisu ?? 10) ? "default" : "secondary"}
+                    >
+                      Tiramisu: {inventory.tiramisu ?? 0}
                     </Badge>
                   </div>
                   <Badge variant="secondary">
@@ -764,7 +791,7 @@ function AdminDashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3">
                       <div>
-                        <p className="font-medium">Irani Chai</p>
+                        <p className="font-medium">Special Chai</p>
                         <p className="text-sm text-muted-foreground">
                           Available: {inventory.chai}
                         </p>
@@ -822,6 +849,36 @@ function AdminDashboard() {
                         </Button>
                       </div>
                     </div>
+                    <div className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3">
+                      <div>
+                        <p className="font-medium">Tiramisu</p>
+                        <p className="text-sm text-muted-foreground">
+                          Available: {inventory.tiramisu ?? 0}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => updateEditQuantity("tiramisu", -1)}
+                          disabled={editQuantities.tiramisu === 0}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-8 text-center text-lg font-semibold">
+                          {editQuantities.tiramisu}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => updateEditQuantity("tiramisu", 1)}
+                          disabled={editQuantities.tiramisu >= inventory.tiramisu}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                   {editError && (
                     <Alert variant="destructive">
@@ -868,9 +925,10 @@ function AdminDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <SummaryCard label="Served chai" value={readySummary.chaiCount} />
                   <SummaryCard label="Served buns" value={readySummary.bunCount} />
+                  <SummaryCard label="Served tiramisu" value={readySummary.tiramisuCount} />
                   <SummaryCard
                     label="Revenue"
                     value={currency.format(readySummary.revenue || 0)}
@@ -932,7 +990,7 @@ function AdminDashboard() {
                             </Button>
                           </TableCell>
                           <TableCell className="text-right font-semibold">
-                            {currency.format(ticketTotal(ticket, Number(chaiPrice) || 0, Number(bunPrice) || 0))}
+                            {currency.format(ticketTotal(ticket, Number(chaiPrice) || 0, Number(bunPrice) || 0, Number(tiramisuPrice) || 0))}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1009,22 +1067,22 @@ function AdminDashboard() {
                 <form onSubmit={saveInventory} className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="chaiInventory">Irani Chai Inventory</Label>
+                      <Label htmlFor="chaiInventory">Special Chai Inventory</Label>
                       <Input
                         id="chaiInventory"
                         type="number"
                         min={0}
-                        value={inventory.chai}
+                        value={inventory.chai ?? 0}
                         onChange={(e) => setInventory((prev) => ({ ...prev, chai: Number(e.target.value) || 0 }))}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="chaiBuffer">Irani Chai Buffer</Label>
+                      <Label htmlFor="chaiBuffer">Special Chai Buffer</Label>
                       <Input
                         id="chaiBuffer"
                         type="number"
                         min={0}
-                        value={buffer.chai}
+                        value={buffer.chai ?? 10}
                         onChange={(e) => setBuffer((prev) => ({ ...prev, chai: Number(e.target.value) || 0 }))}
                       />
                       <p className="text-xs text-muted-foreground">
@@ -1039,7 +1097,7 @@ function AdminDashboard() {
                         id="bunInventory"
                         type="number"
                         min={0}
-                        value={inventory.bun}
+                        value={inventory.bun ?? 0}
                         onChange={(e) => setInventory((prev) => ({ ...prev, bun: Number(e.target.value) || 0 }))}
                       />
                     </div>
@@ -1049,8 +1107,33 @@ function AdminDashboard() {
                         id="bunBuffer"
                         type="number"
                         min={0}
-                        value={buffer.bun}
+                        value={buffer.bun ?? 10}
                         onChange={(e) => setBuffer((prev) => ({ ...prev, bun: Number(e.target.value) || 0 }))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Warning will show when inventory falls below this level
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tiramisuInventory">Tiramisu Inventory</Label>
+                      <Input
+                        id="tiramisuInventory"
+                        type="number"
+                        min={0}
+                        value={inventory.tiramisu ?? 0}
+                        onChange={(e) => setInventory((prev) => ({ ...prev, tiramisu: Number(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tiramisuBuffer">Tiramisu Buffer</Label>
+                      <Input
+                        id="tiramisuBuffer"
+                        type="number"
+                        min={0}
+                        value={buffer.tiramisu ?? 10}
+                        onChange={(e) => setBuffer((prev) => ({ ...prev, tiramisu: Number(e.target.value) || 0 }))}
                       />
                       <p className="text-xs text-muted-foreground">
                         Warning will show when inventory falls below this level
@@ -1077,7 +1160,7 @@ function AdminDashboard() {
               <CardHeader>
                 <CardTitle>Pricing</CardTitle>
                 <CardDescription>
-                  Set the prices for Irani Chai and Bun Maska.
+                  Set the prices for Special Chai, Bun Maska, and Tiramisu.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1086,7 +1169,7 @@ function AdminDashboard() {
                   className="grid gap-4 md:grid-cols-3"
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="chaiPrice">Irani Chai price</Label>
+                    <Label htmlFor="chaiPrice">Special Chai price</Label>
                     <Input
                       id="chaiPrice"
                       type="number"
@@ -1103,6 +1186,16 @@ function AdminDashboard() {
                       min={0}
                       value={bunPrice}
                       onChange={(e) => setBunPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tiramisuPrice">Tiramisu price</Label>
+                    <Input
+                      id="tiramisuPrice"
+                      type="number"
+                      min={0}
+                      value={tiramisuPrice}
+                      onChange={(e) => setTiramisuPrice(e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col justify-end gap-2">
@@ -1154,13 +1247,19 @@ function formatOrder(items) {
   return filtered.map((item) => `${item.name} × ${item.qty}`).join(", ");
 }
 
-function ticketTotal(ticket, fallbackChai = 0, fallbackBun = 0) {
+function ticketTotal(ticket, fallbackChai = 0, fallbackBun = 0, fallbackTiramisu = 0) {
   if (typeof ticket.total === "number") {
     return ticket.total;
   }
   if (!Array.isArray(ticket.items)) return 0;
   return ticket.items.reduce((sum, item) => {
-    const price = item.name === "Irani Chai" ? fallbackChai : fallbackBun;
+    let price = fallbackBun;
+    // Handle both "Special Chai" and legacy "Irani Chai"
+    if (item.name === "Special Chai" || item.name === "Irani Chai") {
+      price = fallbackChai;
+    } else if (item.name === "Tiramisu") {
+      price = fallbackTiramisu;
+    }
     return sum + (price || 0) * (item.qty || 0);
   }, 0);
 }

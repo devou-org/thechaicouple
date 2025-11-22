@@ -12,10 +12,12 @@ const DEFAULT_SETTINGS = {
   inventory: {
     chai: 0,
     bun: 0,
+    tiramisu: 0,
   },
   buffer: {
     chai: 10,
     bun: 10,
+    tiramisu: 10,
   },
 };
 
@@ -25,7 +27,21 @@ export async function GET() {
     if (!snap.exists()) {
       return NextResponse.json(DEFAULT_SETTINGS, { status: 200 });
     }
-    return NextResponse.json({ ...DEFAULT_SETTINGS, ...snap.data() }, { status: 200 });
+    const data = snap.data();
+    // Properly merge nested objects (inventory and buffer) to ensure all fields are present
+    const mergedData = {
+      ...DEFAULT_SETTINGS,
+      ...data,
+      inventory: {
+        ...DEFAULT_SETTINGS.inventory,
+        ...(data.inventory || {}),
+      },
+      buffer: {
+        ...DEFAULT_SETTINGS.buffer,
+        ...(data.buffer || {}),
+      },
+    };
+    return NextResponse.json(mergedData, { status: 200 });
   } catch (err) {
     console.error("Error in /api/settings GET:", err);
     return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
@@ -41,10 +57,12 @@ export async function POST(request) {
     const inventory = {
       chai: Number(body.inventory?.chai) ?? DEFAULT_SETTINGS.inventory.chai,
       bun: Number(body.inventory?.bun) ?? DEFAULT_SETTINGS.inventory.bun,
+      tiramisu: Number(body.inventory?.tiramisu) ?? DEFAULT_SETTINGS.inventory.tiramisu,
     };
     const buffer = {
       chai: Number(body.buffer?.chai) ?? DEFAULT_SETTINGS.buffer.chai,
       bun: Number(body.buffer?.bun) ?? DEFAULT_SETTINGS.buffer.bun,
+      tiramisu: Number(body.buffer?.tiramisu) ?? DEFAULT_SETTINGS.buffer.tiramisu,
     };
 
     await setDoc(

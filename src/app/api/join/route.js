@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, getTodayKey, firestoreHelpers } from "@/lib/firebase";
+import { isChai, isBun, isTiramisu } from "@/lib/item-names";
 
 const {
   doc,
@@ -75,29 +76,34 @@ export async function POST(request) {
     
     if (settingsSnap.exists()) {
       const currentSettings = settingsSnap.data();
-      const currentInventory = currentSettings.inventory || { chai: 0, bun: 0 };
+      const currentInventory = currentSettings.inventory || { chai: 0, bun: 0, tiramisu: 0 };
       
       // Calculate inventory changes
       let chaiDecrement = 0;
       let bunDecrement = 0;
+      let tiramisuDecrement = 0;
       
       items.forEach((item) => {
         const qty = Number(item.qty) || 0;
-        if (item.name === "Irani Chai") {
+        if (isChai(item.name)) {
           chaiDecrement += qty;
-        } else if (item.name === "Bun") {
+        } else if (isBun(item.name)) {
           bunDecrement += qty;
+        } else if (isTiramisu(item.name)) {
+          tiramisuDecrement += qty;
         }
       });
 
       // Only decrement if we have enough inventory (prevent negative)
       const newChaiInventory = Math.max(0, (currentInventory.chai || 0) - chaiDecrement);
       const newBunInventory = Math.max(0, (currentInventory.bun || 0) - bunDecrement);
+      const newTiramisuInventory = Math.max(0, (currentInventory.tiramisu || 0) - tiramisuDecrement);
 
       // Update only inventory field (more efficient than updating entire settings doc)
       await updateDoc(settingsRef, {
         "inventory.chai": newChaiInventory,
         "inventory.bun": newBunInventory,
+        "inventory.tiramisu": newTiramisuInventory,
         updatedAt: serverTimestamp(),
       });
     }

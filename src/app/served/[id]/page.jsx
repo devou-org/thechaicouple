@@ -31,7 +31,7 @@ export default function ServedPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pricing, setPricing] = useState({ chaiPrice: 0, bunPrice: 0 });
+  const [pricing, setPricing] = useState({ chaiPrice: 0, bunPrice: 0, tiramisuPrice: 0 });
 
   useEffect(() => {
     if (!id) return;
@@ -83,6 +83,7 @@ export default function ServedPage() {
         const next = {
           chaiPrice: Number(data.chaiPrice) || 0,
           bunPrice: Number(data.bunPrice) || 0,
+          tiramisuPrice: Number(data.tiramisuPrice) || 0,
         };
         if (!ignore) {
           setPricing(next);
@@ -100,11 +101,16 @@ export default function ServedPage() {
 
   const orderSummary = useMemo(() => {
     if (!data?.items) return [];
-    return data.items
+        return data.items
       .filter((item) => item.qty > 0)
       .map((item) => {
-        const price =
-          item.name === "Irani Chai" ? pricing.chaiPrice : pricing.bunPrice;
+        let price = pricing.bunPrice;
+        // Handle both "Special Chai" and legacy "Irani Chai"
+        if (item.name === "Special Chai" || item.name === "Irani Chai") {
+          price = pricing.chaiPrice;
+        } else if (item.name === "Tiramisu") {
+          price = pricing.tiramisuPrice;
+        }
         const subtotal = (price || 0) * item.qty;
         return { name: item.name, qty: item.qty, price, subtotal };
       });

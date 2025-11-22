@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, getTodayKey, firestoreHelpers } from "@/lib/firebase";
+import { isChai, isBun, isTiramisu } from "@/lib/item-names";
 
 const {
   doc,
@@ -51,6 +52,7 @@ export async function DELETE() {
     const deletions = [];
     let totalChaiRestore = 0;
     let totalBunRestore = 0;
+    let totalTiramisuRestore = 0;
 
     snapshot.forEach((docSnap) => {
       const ticketData = docSnap.data();
@@ -62,10 +64,12 @@ export async function DELETE() {
         const items = Array.isArray(ticketData.items) ? ticketData.items : [];
         items.forEach((item) => {
           const qty = Number(item.qty) || 0;
-          if (item.name === "Irani Chai") {
+          if (isChai(item.name)) {
             totalChaiRestore += qty;
-          } else if (item.name === "Bun") {
+          } else if (isBun(item.name)) {
             totalBunRestore += qty;
+          } else if (isTiramisu(item.name)) {
+            totalTiramisuRestore += qty;
           }
         });
       }
@@ -74,18 +78,19 @@ export async function DELETE() {
     await Promise.all(deletions);
 
     // Restore inventory for all deleted waiting tickets
-    if (totalChaiRestore > 0 || totalBunRestore > 0) {
+    if (totalChaiRestore > 0 || totalBunRestore > 0 || totalTiramisuRestore > 0) {
       const settingsRef = doc(db, "config", "app-settings");
       const settingsSnap = await getDoc(settingsRef);
       
       if (settingsSnap.exists()) {
         const currentSettings = settingsSnap.data();
-        const currentInventory = currentSettings.inventory || { chai: 0, bun: 0 };
+        const currentInventory = currentSettings.inventory || { chai: 0, bun: 0, tiramisu: 0 };
         
         // Update only inventory field (more efficient than updating entire settings doc)
         await updateDoc(settingsRef, {
           "inventory.chai": (currentInventory.chai || 0) + totalChaiRestore,
           "inventory.bun": (currentInventory.bun || 0) + totalBunRestore,
+          "inventory.tiramisu": (currentInventory.tiramisu || 0) + totalTiramisuRestore,
           updatedAt: serverTimestamp(),
         });
       }

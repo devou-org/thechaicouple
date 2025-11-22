@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, firestoreHelpers } from "@/lib/firebase";
+import { ITEM_NAMES, isChai, isBun, isTiramisu } from "@/lib/item-names";
 
 const { doc, collection, deleteDoc, getDoc, setDoc, updateDoc, serverTimestamp } = firestoreHelpers;
 
@@ -42,29 +43,34 @@ export async function DELETE(request) {
       
       if (settingsSnap.exists()) {
         const currentSettings = settingsSnap.data();
-        const currentInventory = currentSettings.inventory || { chai: 0, bun: 0 };
+        const currentInventory = currentSettings.inventory || { chai: 0, bun: 0, tiramisu: 0 };
         
         // Calculate inventory to restore
         let chaiRestore = 0;
         let bunRestore = 0;
+        let tiramisuRestore = 0;
         
         items.forEach((item) => {
           const qty = Number(item.qty) || 0;
-          if (item.name === "Irani Chai") {
+          if (isChai(item.name)) {
             chaiRestore += qty;
-          } else if (item.name === "Bun") {
+          } else if (isBun(item.name)) {
             bunRestore += qty;
+          } else if (isTiramisu(item.name)) {
+            tiramisuRestore += qty;
           }
         });
 
         // Restore inventory
         const newChaiInventory = (currentInventory.chai || 0) + chaiRestore;
         const newBunInventory = (currentInventory.bun || 0) + bunRestore;
+        const newTiramisuInventory = (currentInventory.tiramisu || 0) + tiramisuRestore;
 
         // Update only inventory field (more efficient than updating entire settings doc)
         await updateDoc(settingsRef, {
           "inventory.chai": newChaiInventory,
           "inventory.bun": newBunInventory,
+          "inventory.tiramisu": newTiramisuInventory,
           updatedAt: serverTimestamp(),
         });
       }
@@ -123,39 +129,47 @@ export async function PATCH(request) {
     }
 
     const currentSettings = settingsSnap.data();
-    const currentInventory = currentSettings.inventory || { chai: 0, bun: 0 };
+    const currentInventory = currentSettings.inventory || { chai: 0, bun: 0, tiramisu: 0 };
     
     // Calculate old quantities (to restore)
     let oldChaiQty = 0;
     let oldBunQty = 0;
+    let oldTiramisuQty = 0;
     oldItems.forEach((item) => {
       const qty = Number(item.qty) || 0;
-      if (item.name === "Irani Chai") {
+      if (isChai(item.name)) {
         oldChaiQty += qty;
-      } else if (item.name === "Bun") {
+      } else if (isBun(item.name)) {
         oldBunQty += qty;
+      } else if (isTiramisu(item.name)) {
+        oldTiramisuQty += qty;
       }
     });
 
     // Calculate new quantities (to decrement)
     let newChaiQty = 0;
     let newBunQty = 0;
+    let newTiramisuQty = 0;
     items.forEach((item) => {
       const qty = Number(item.qty) || 0;
-      if (item.name === "Irani Chai") {
+      if (isChai(item.name)) {
         newChaiQty += qty;
-      } else if (item.name === "Bun") {
+      } else if (isBun(item.name)) {
         newBunQty += qty;
+      } else if (isTiramisu(item.name)) {
+        newTiramisuQty += qty;
       }
     });
 
     // Calculate net change
     const chaiChange = newChaiQty - oldChaiQty;
     const bunChange = newBunQty - oldBunQty;
+    const tiramisuChange = newTiramisuQty - oldTiramisuQty;
 
     // Check if new quantities exceed available inventory
     const availableChai = (currentInventory.chai || 0) - chaiChange;
     const availableBun = (currentInventory.bun || 0) - bunChange;
+    const availableTiramisu = (currentInventory.tiramisu || 0) - tiramisuChange;
 
     if (availableChai < 0) {
       return NextResponse.json(
@@ -177,6 +191,16 @@ export async function PATCH(request) {
       );
     }
 
+    if (availableTiramisu < 0) {
+      return NextResponse.json(
+        { 
+          error: "Stock exceeded", 
+          message: `Insufficient Tiramisu inventory. Available: ${currentInventory.tiramisu}, Requested: ${newTiramisuQty}, Already reserved: ${oldTiramisuQty}` 
+        },
+        { status: 400 }
+      );
+    }
+
     // Update ticket with new items
     await updateDoc(ticketRef, {
       items,
@@ -187,6 +211,7 @@ export async function PATCH(request) {
     await updateDoc(settingsRef, {
       "inventory.chai": availableChai,
       "inventory.bun": availableBun,
+      "inventory.tiramisu": availableTiramisu,
       updatedAt: serverTimestamp(),
     });
 
